@@ -21,7 +21,7 @@ class Page extends BaseController
 
     public function tos()
     {
-        echo "Halaman Term of Serfice";
+        echo "Halaman Term of Service";
     }
 
     public function biodata()
