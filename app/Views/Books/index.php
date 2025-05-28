@@ -6,7 +6,7 @@
         <div class="col">
             <h1 class="mt-2">Daftar Buku</h1>
 
-            <a href="/books/create" class="btn btn-primary mb-3">Tambah Data Buku</a>
+            <a href="/books/create" class="btn btn-primary mt-3">Tambah Data Buku</a>
 
             <table class="table">
                 <thead>
