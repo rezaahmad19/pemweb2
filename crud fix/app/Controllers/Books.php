@@ -49,23 +49,35 @@ class Books extends BaseController
 
     public function save()
     {
-        // Validasi yang lebih realistis
-        $rules = [
-            'judul' => 'required|is_unique[books.judul]',
+        if (!$this->validate([
+            'judul' => 'required',
+            'judul' => [
+                'rules' => 'required|is_unique[books.judul]',
+                'errors' => [
+                    'required' => '{field} buku harus diisi',
+                    'is_unique' => '{field} buku sudah dimasukkan'
+                ]
+            ],
+            'sampul' => [
+                'rules' => 'uploaded[sampul]|max_size[sampul,1024]|is_image[sampul]|mime_in[sampul,image/jpg,image/jpeg,image/png]',
+                'errors' => [
+                    'uploaded' => 'Pilihlah gambar yang sesuai',
+                    'max_size' => 'Ukuran file kebesaran',
+                    'is_image' => 'File anda pilih bukan gambar',
+                    'mime_in' => 'File anda pilih bukan gambar'
+                ]
+            ],
             'penulis' => 'required',
             'penerbit' => 'required'
-        ];
-
-        if (!$this->validate($rules)) {
-            // Jika validasi gagal karena judul sudah ada
-            if ($this->validator->hasError('judul', 'is_unique')) {
-                session()->setFlashdata('error', 'Judul buku "' . $this->request->getVar('judul') . '" sudah ada dalam database!');
-                return redirect()->to('/books'); // Redirect ke halaman books/index
-            }
-
-            // Untuk error validasi lainnya, tetap di form create
+        ])) {
             return redirect()->to('/books/create')->withInput()->with('validation', $this->validator);
         }
+        // Ambil file sampulAdd commentMore actions
+        $fileSampul = $this->request->getFile('sampul');
+        // Generate nama file randomAdd commentMore actions
+        $namaSampul = $fileSampul->getRandomName();
+        // Pindahkan file ke folder imgAdd commentMore actions
+        $fileSampul->move('img', $namaSampul);
 
         $slug = url_title($this->request->getVar('judul'), '-', true);
 
@@ -74,39 +86,39 @@ class Books extends BaseController
             'slug' => $slug,
             'penulis' => $this->request->getVar('penulis'),
             'penerbit' => $this->request->getVar('penerbit'),
-            'sampul' => $this->request->getVar('sampul') ?? 'default.jpg'
+            'sampul' => $namaSampul
         ];
-
-        // Debug data sebelum disimpan
-        // dd($data);
-
         try {
             $this->bukuModel->save($data);
-            session()->setFlashdata('pesan', 'Data buku berhasil ditambahkan.');
+            session()->setFlashdata('pesan', 'Buku berhasil ditambahkan.');
             return redirect()->to('/books');
         } catch (\Exception $e) {
-            // Tangkap error dan tampilkan
+            // Jika ada error, hapus file yang sudah diupload
+            if (isset($namaSampul) && file_exists('img/' . $namaSampul)) {
+                unlink('img/' . $namaSampul);
+            }
             die($e->getMessage());
         }
     }
 
     public function delete($id)
     {
+        // cari nama gambar
         $buku = $this->bukuModel->find($id);
 
-        if ($buku['sampul'] != 'default.jpg') {
-            $path = FCPATH . 'img/' . $buku['sampul'];
-            if (is_file($path)) {
-                @unlink($path);
-            }
+        // cek jika file gambar bukan default
+        if ($buku['sampul'] != 'no-cover.jpg') {
+            // hapus file gambar
+            unlink('img/' . $buku['sampul']);
         }
 
         $this->bukuModel->delete($id);
 
-        session()->setFlashdata('pesan', 'Data buku berhasil dihapus.');
+        session()->setFlashdata('pesan', 'Data berhasil dihapus');
         return redirect()->to('/books');
     }
-    public function edit($slug)
+
+    public function edit($slug): string
     {
         $data = [
             'title' => 'Form Ubah Buku',
@@ -115,23 +127,53 @@ class Books extends BaseController
         ];
         return view('books/edit', $data);
     }
-
     public function update($id)
     {
-        // Ambil data lama
+        // Ambil data lamaAdd commentMore actions
         $bukuLama = $this->bukuModel->getBuku($this->request->getVar('slug'));
 
-        // Validasi: hanya judul yang perlu is_unique
+        // Validasi judul
         $judulRule = ($bukuLama['judul'] == $this->request->getVar('judul')) ? 'required' : 'required|is_unique[books.judul]';
 
-        if (
-            !$this->validate([
-                'judul' => $judulRule,
-                'penulis' => 'required',
-                'penerbit' => 'required',
-            ])
-        ) {
+        // Validasi untuk update
+        $validationRules = [
+            'judul' => [
+                'rules' => $judulRule,
+                'errors' => [
+                    'required' => '{field} buku harus diisi',
+                    'is_unique' => '{field} buku sudah dimasukkan'
+                ]
+            ],
+            'penulis' => 'required',
+            'penerbit' => 'required',
+            'sampul' => [
+                'rules' => 'max_size[sampul,1024]|is_image[sampul]|mime_in[sampul,image/jpg,image/jpeg,image/png]',
+                'errors' => [
+                    'max_size' => 'Ukuran file kebesaran',
+                    'is_image' => 'File anda pilih bukan gambar',
+                    'mime_in' => 'File anda pilih bukan gambar'
+                ]
+            ]
+        ];
+        if (!$this->validate($validationRules)) {
             return redirect()->to('/books/edit/' . $this->request->getVar('slug'))->withInput()->with('validation', $this->validator);
+        }
+        $fileSampul = $this->request->getFile('sampul');
+        $namaSampul = $bukuLama['sampul']; // Default ke sampul lama
+        // Jika upload file baruAdd commentMore actions
+        if ($fileSampul->isValid() && !$fileSampul->hasMoved()) {
+            // Generate nama file random
+            $namaSampul = $fileSampul->getRandomName();
+            // Pindahkan file ke folder imgAdd commentMore actions
+            $fileSampul->move('img', $namaSampul);
+
+            // Hapus file lama jika bukan no-cover.jpg
+            if ($bukuLama['sampul'] != 'no-cover.jpg') {
+                $path = FCPATH . 'img/' . $bukuLama['sampul'];
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
         }
 
         $slug = url_title($this->request->getVar('judul'), '-', true);
@@ -142,10 +184,18 @@ class Books extends BaseController
             'slug' => $slug,
             'penulis' => $this->request->getVar('penulis'),
             'penerbit' => $this->request->getVar('penerbit'),
-            'sampul' => $this->request->getVar('sampul')
+            'sampul' => $namaSampul
         ]);
-
-        session()->setFlashdata('pesan', 'Data buku berhasil diubah.');
+        session()->setFlashdata('pesan', 'Data Buku Berhasil Diedit!');
         return redirect()->to('/books');
+        $gambarSampul = $this->request->getFile('sampul');
+
+        if ($gambarSampul->getError()) {
+            $namaSampul = $this->request->getVar('sampulLama');
+        } else {
+            $namaSampul = $gambarSampul->getRandomName();
+            $gambarSampul->move('img', $namaSampul);
+            unlink('img/' . $this->request->getVar('sampulLama'));
+        }
     }
 }
