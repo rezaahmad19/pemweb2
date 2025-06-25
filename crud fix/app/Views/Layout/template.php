@@ -19,7 +19,8 @@
           <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="/about">Tentang</a></li>
           <li class="nav-item"><a class="nav-link" href="/books">Daftar Buku</a></li>
-          <li class="nav-item"><a class="nav-link" href="/contact">Kontak</a></li>
+          <li class="nav-item"><a class="nav-link" href="/books">Daftar Penulis</a></li>
+          <li class="nav-item"><a class="nav-link" href="/contact">Hubungi Kami</a></li>
         </ul>
       </div>
     </div>

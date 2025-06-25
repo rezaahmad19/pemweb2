@@ -23,4 +23,4 @@ $routes->get('/contact', 'Pages::contact');
 $routes->get('/books/edit/(:segment)', 'Books::edit/$1');
 $routes->post('/books/update/(:num)', 'Books::update/$1');
 
-
+$routes->get('/orang', 'Orang::index');
